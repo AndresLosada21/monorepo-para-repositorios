@@ -44,3 +44,5 @@ Final: Ruling: o caso do ERP Consulta estava fixo no codigo (org, projeto, Wiki,
 Final: Ruling: a ordem de publicacao nao saia do grafo quando a dependencia nao publicava, e virava a ordem do arquivo; agora e topologica e estavel, com ciclo detectado - custo se errado: publica-se uma biblioteca depois de quem a consome
 Final: Ruling: a varredura acusava 'skill' e 'ledger', que sao palavras correntes em codigo, e dizia 'limpo' para uma pasta que nao e repositorio git; os dois foram corrigidos, com teste que prova que a varredura ainda acha rastro de verdade - custo se errado: deixa de acusar um rastro que use esses termos isolados
 Final: fixed achados da revisao - 57/57 testes passam; ensaio: 3 componentes separados com o historico vindo do monorepo
+
+Task 7: complete (commits 81cddca..81cddca, tests: python -m pytest -v -> 57/57 pass; repositorio publicado em github.com/AndresLosada21/monorepo-para-repositorios e instalado em ~/.config/opencode/skills/monorepo-para-repositorios, com a suite passando da pasta instalada)
