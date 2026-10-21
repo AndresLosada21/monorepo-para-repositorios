@@ -250,13 +250,21 @@ def escrever_secoes(pasta_repo: Path, c: dict, dados: dict) -> None:
 
 
 def criar_wiki_codigo(org: str, projeto: str, repo: str, branch: str) -> str:
-    """Cria a Wiki de codigo do repositorio, mapeada para docs/wiki."""
+    """Cria a Wiki de codigo do repositorio, mapeada para docs/wiki.
+
+    Devolve o identificador da Wiki, ou vazio quando ela ja existe (o que e o caso
+    normal na segunda execucao).
+    """
     az = "az.cmd" if sys.platform == "win32" else "az"
     r = subprocess.run([az, "devops", "wiki", "create", "--org", f"https://dev.azure.com/{org}",
                         "--project", projeto, "--name", repo, "--type", "codewiki",
                         "--repository", repo, "--mapped-path", "/docs/wiki", "--version", branch],
                        capture_output=True, text=True, encoding="utf-8", errors="replace")
     if r.returncode:
+        # ja existe: a Wiki de codigo foi criada numa execucao anterior
+        if "already exists" in (r.stderr + r.stdout).lower():
+            return ""
+        print(f"    {repo}: Wiki de codigo nao criada ({r.stderr.strip()[:160]})")
         return ""
     try:
         return json.loads(r.stdout).get("id", "")
@@ -290,6 +298,7 @@ def main(argv=None) -> int:
     ap.add_argument("--manifesto", required=True)
     ap.add_argument("--repositorios", required=True, help="pasta com um clone de cada repositorio")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--sim", action="store_true", help="nao pede confirmacao")
     args = ap.parse_args(argv)
 
     m = carregar(args.manifesto)
@@ -305,6 +314,15 @@ def main(argv=None) -> int:
     raiz_wiki = wiki.get("raiz", "")
     link_arquitetura = wiki.get("link_arquitetura", "")
     token = None if args.dry_run else _token()
+
+    # a confirmacao vem antes de qualquer escrita: a copia sobrescreve a pagina do projeto
+    if not args.dry_run and not args.sim:
+        print("A etapa escreve as oito secoes em docs/wiki de cada repositorio e publica a copia "
+              "na Wiki do projeto, sobrescrevendo a pagina anterior do componente.")
+        print("Confirme digitando 'sim' (ou use --sim):")
+        if input().strip().lower() != "sim":
+            print("cancelado")
+            return 1
 
     for c in m["componentes"]:
         pasta = clones / c["repo"]
@@ -329,6 +347,11 @@ def main(argv=None) -> int:
         commit = _commit(pasta)
         aviso = AVISO.format(repo=c["repo"], branch=branch, commit=commit)
         copia = aviso + "\n".join(secoes[nome] for nome in ORDEM) + "\n"
+
+        # a Wiki de codigo le o repositorio: ela precisa existir e o docs/wiki estar commitado
+        identificador = criar_wiki_codigo(m.get("org", ""), m.get("projeto", ""), c["repo"], branch)
+        if identificador:
+            print(f"    {c['repo']}: Wiki de codigo criada")
         pagina = publicar_projeto(raiz_wiki, c["repo"], copia, token, m)
         print(f"  {c['repo']}: oito secoes escritas e copia publicada (pagina {pagina})")
 
