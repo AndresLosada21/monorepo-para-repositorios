@@ -13,8 +13,10 @@ Tudo se origina de um **manifesto JSON** que descreve o que fazer. Nenhum script
   "projeto": "Digital Solution MFG Run",
   "org": "yamahaind",
   "feed": "mfg-java",
+  "responsavel": { "nome": "Quem assina os commits", "email": "pessoa@exemplo" },
   "monorepo": { "url": "...", "branch": "main" },
-  "wiki": { "raiz": "/Java/ERP Consulta" },
+  "wiki": { "raiz": "/Java/ERP Consulta", "identificador": "...", "link_arquitetura": "..." },
+  "ambiente": { "servidor": "Tomcat 11", "java": "JDK 25", "build": "Maven 3.9" },
   "componentes": [
     {
       "repo": "ITSecurityService",
@@ -30,7 +32,7 @@ Tudo se origina de um **manifesto JSON** que descreve o que fazer. Nenhum script
 }
 ```
 
-O campo `dependeDe` é o que define a ordem de build e a ordem de publicação no feed: sai do grafo, não da cabeça de quem opera.
+O campo `dependeDe` é o que define a ordem de build e a ordem de publicação no feed: sai do grafo, não da cabeça de quem opera. O `responsavel` é quem assina os commits separados.
 
 ## Fases
 
@@ -52,7 +54,8 @@ Cada fase é um comando separado, com `--dry-run`. Nada de passar de uma fase se
 | `scripts/manifesto.py` | Lê e valida o manifesto; calcula a ordem de publicação |
 | `scripts/varrer.py` | Acha rastro de IA na árvore, no histórico, nos autores e nas mensagens |
 | `scripts/separar.py` | Separa o monorepo em repositórios, reescrevendo o histórico |
-| `scripts/wiki_componente.py` | Gera as oito seções da Wiki de código e publica a cópia na Wiki do projeto |
+| `scripts/modelo_wiki.py` | As oito seções da Wiki de código, com o texto de cada uma |
+| `scripts/wiki_componente.py` | Gera a Wiki de código de cada componente e publica a cópia na Wiki do projeto |
 | `scripts/publicar_feed.py` | Publica Maven e npm no feed, na ordem das dependências |
 
 ## Instalação
@@ -87,4 +90,4 @@ que o tocou.
 | `references/armadilhas.md` | O que dá errado e como contornar |
 | `references/wiki-componente.md` | As oito seções e o que o DevOps precisa em cada uma |
 | `references/publicacao-feed.md` | Ordem, imutabilidade das versões, o que fazer quando a versão já saiu |
-| `manifesto_exemplo.json` | Exemplo completo, com os doze casos resolvidos |
+| `manifesto_exemplo.json` | Exemplo completo, com os nove componentes de um caso real |

@@ -31,8 +31,10 @@ projeto específico. Copie `manifesto_exemplo.json` e ajuste.
 | Campo | Para que serve |
 |---|---|
 | `projeto`, `org`, `feed` | Onde fica, na organização e em qual feed |
+| `responsavel` | Quem assina os commits separados (nome e e-mail) |
 | `monorepo.url`, `monorepo.branch` | De onde vem o código |
-| `wiki.raiz` | Onde a Wiki do projeto recebe as cópias |
+| `wiki.raiz`, `wiki.identificador`, `wiki.link_arquitetura` | Onde a Wiki do projeto recebe as cópias |
+| `ambiente` | Servidor, JDK e ferramenta de build, que aparecem na Wiki de código |
 | `componentes[]` | Um por repositório: `repo`, `caminho`, `artefato`, `tipo`, `versao`, `publica`, `dependeDe`, `descricao` |
 
 O `dependeDe` define a ordem de build e de publicação. Sai do grafo, não da cabeça de quem opera.
@@ -40,6 +42,8 @@ O `dependeDe` define a ordem de build e de publicação. Sai do grafo, não da c
 ## As seis fases
 
 Cada fase é um comando separado, com `--dry-run`. **Não passe de uma fase sem conferir a anterior.**
+
+As fases que escrevem (2, 4 e 5) pedem confirmação. Com `--sim`, pulam a pergunta.
 
 ### 1. Diagnóstico (só leitura)
 
@@ -57,12 +61,19 @@ python scripts/separar.py --manifesto m.json --destino <pasta> [--apenas <repo>]
 ```
 
 Para cada componente: reescreve o histórico com `git filter-repo` (a pasta vira a raiz, o autor
-passa a ser o responsável, o texto é limpo), declara a versão e o feed no `pom.xml` ou
-`package.json`, cria o repositório e sobe a branch `reorganizacao/repositorio-independente`.
+passa a ser o `responsavel` do manifesto, o texto é limpo), declara a versão e o feed no
+`pom.xml` ou `package.json` e monta a branch `reorganizacao/repositorio-independente`.
+
+O histórico vem do monorepo; o repositório novo é só o destino. O `filter-repo` roda sobre
+`refs/remotes/monorepo/<branch>` e os arquivos de apoio (`mailmap` e `replace-text.txt`) vão
+**dentro** do repositório, porque o `filter-repo` resolve caminho relativo a ele.
 
 **Confira a branch padrão depois.** A branch padrão do repositório novo precisa ser a do código
 novo. Se não der para trocar sem *force push*, o script usa commit de merge, que preserva o
 histórico antigo e permite push normal.
+
+**O repositório de destino precisa existir.** Crie-o antes (`az repos create`) ou o script
+falha ao subir a branch.
 
 ### 3. Prova (só leitura)
 
@@ -78,16 +89,20 @@ ao monorepo.
 ### 4. Documentação (escreve)
 
 ```text
-python scripts/wiki_componente.py --manifesto m.json --repositorios <pasta> [--dry-run]
+python scripts/wiki_componente.py --manifesto m.json --repositorios <pasta> [--dry-run] [--sim]
 ```
 
 Gera as oito seções da Wiki de código em `docs/wiki` de cada repositório, cria a Wiki de código
 no Azure e publica a cópia na Wiki do projeto, com o aviso de fonte no topo.
 
+**A Wiki de código lê o repositório, então o `docs/wiki` precisa estar commitado e publicado**:
+sem isso, a Wiki do Azure fica vazia. O script escreve os arquivos; o commit e o push ficam com
+o operador.
+
 ### 5. Publicação (escreve)
 
 ```text
-python scripts/publicar_feed.py --manifesto m.json --repositorios <pasta> [--dry-run]
+python scripts/publicar_feed.py --manifesto m.json --repositorios <pasta> [--dry-run] [--sim]
 ```
 
 Publica na ordem do `dependeDe`. Versão publicada é imutável: o script confere antes e, se a

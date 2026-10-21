@@ -25,7 +25,7 @@ O caso que motivou a skill foi a divisão da família ERPConsulta (8 componentes
 monorepo-para-repositorios/
 ├── SKILL.md                      o roteiro: quando usar, as seis fases, os portões
 ├── README.md                     o que é, como instalar, visão geral
-├── manifesto_exemplo.json        exemplo completo, com os doze casos resolvidos
+├── manifesto_exemplo.json        exemplo completo, com os nove componentes de um caso real
 ├── scripts/
 │   ├── varrer.py                 varre árvore, histórico, autores e mensagens
 │   ├── separar.py                separa o monorepo em repositórios, com histórico
@@ -155,7 +155,7 @@ Lê o manifesto. Para cada componente:
 - sobe a branch e abre o pull request;
 - confere a branch padrão e, se precisar, faz o commit de merge.
 
-Tem `--somente-separar`, `--sem-publicar` e `--dry-run`.
+Tem `--apenas`, `--sim` e `--dry-run`.
 
 ### `wiki_componente.py`
 
