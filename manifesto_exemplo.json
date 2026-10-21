@@ -2,13 +2,24 @@
   "projeto": "Digital Solution MFG Run",
   "org": "yamahaind",
   "feed": "mfg-java",
+  "responsavel": {
+    "nome": "CARLOS ANDRES RAMOS LOSADA JUNIOR",
+    "email": "carlos.ramos@yamaha-motor.com.br"
+  },
   "monorepo": {
     "url": "https://dev.azure.com/yamahaind/Digital Solution MFG Run/_git/ERPConsulta",
     "branch": "main"
   },
   "wiki": {
     "raiz": "/Java/ERP Consulta",
-    "paginaArquitetura": "Arquitetura e Deploy"
+    "paginaArquitetura": "Arquitetura e Deploy",
+    "identificador": "Digital-Solution-MFG-Run",
+    "link_arquitetura": "https://dev.azure.com/yamahaind/Digital%20Solution%20MFG%20Run/_wiki/wikis/Digital-Solution-MFG-Run?pagePath=/java/ERP%20Consulta/Arquitetura-e-Deploy"
+  },
+  "ambiente": {
+    "servidor": "Tomcat 11",
+    "java": "JDK 25",
+    "build": "Maven 3.9"
   },
   "componentes": [
     {

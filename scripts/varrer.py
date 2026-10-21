@@ -19,12 +19,11 @@ FERRAMENTAS = (r"claude|opus|sonnet|chatgpt|gpt-\d|copilot|gemini|opencode|clipr
                r"superpowers|ponytail|codex|aider|windsurf|langchain|openai|anthropic")
 # o nome de um modelo de linguagem
 MODELOS = r"modelo de linguagem|intelig[êe]ncia artificial"
-# o vocabulario do trabalho com agente. "kernel" fica de fora: aparece em texto sobre sistema operacional.
-AGENTE = (r"sub-?agentes?|agentic|ledger|"
-          r"self-review|co-authored-by|as an ai|como um modelo")
+# o vocabulario do trabalho com agente. "ledger" e "skill" sao palavras correntes em
+# codigo e ficam de fora, para nao acusar toda vez.
+AGENTE = (r"sub-?agentes?|agentic|self-review|co-authored-by|as an ai|como um modelo")
 # frases que traduzem "feito por ferramenta" em portugues
-PORTUGUES = (r"orquestrador|automa[çc][ãa]o|gerado por (ia|modelo|agente)|"
-             r"\bskill\b")
+PORTUGUES = (r"orquestrador|automa[çc][ãa]o|gerado por (ia|modelo|agente)")
 
 # cada grupo com seu proprio tratamento de maiusculas e de limites de palavra
 PADRAO = re.compile(
@@ -116,10 +115,22 @@ def _mensagens(repo: Path) -> list[str]:
     return achados
 
 
+def _excecoes(repo: Path, excecoes) -> set:
+    """Excecoes resolvidas: tanto pelo caminho absoluto quanto pelo relativo ao repositorio."""
+    resolvidas = set()
+    for e in excecoes or []:
+        caminho = Path(e)
+        if caminho.is_absolute():
+            resolvidas.add(caminho.resolve())
+        else:
+            resolvidas.add((repo / caminho).resolve())
+    return resolvidas
+
+
 def varredura(pasta: Path, excecoes: list[Path] | None = None) -> list[str]:
     """Devolve a lista de achados; vazia significa repositorio limpo."""
     repo = Path(pasta)
-    exc = {Path(e).resolve() for e in (excecoes or [])}
+    exc = _excecoes(repo, excecoes)
     achados = []
     achados += _arvore(repo, exc)
     achados += _historico(repo, exc)
@@ -141,9 +152,13 @@ def main(argv=None) -> int:
         return 2
 
     if args.historico:
+        # sem historico nao ha o que varrer: dizer 'limpo' seria mentira
+        if not (repo / ".git").exists():
+            print(f"{repo.name}: nao e um repositorio git, a varredura de historico nao se aplica")
+            return 2
         achados = varredura(repo, [Path(e) for e in args.excecao])
     else:
-        achados = _arvore(repo, {Path(e).resolve() for e in args.excecao})
+        achados = _arvore(repo, _excecoes(repo, [Path(e) for e in args.excecao]))
 
     print(f"{repo.name}: {len(achados)} achados")
     for a in achados[:60]:

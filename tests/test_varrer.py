@@ -41,6 +41,14 @@ def test_excecao_e_ignorada(tmp_path):
     assert varredura(tmp_path, excecoes=[tmp_path / "a.txt"]) == []
 
 
+def test_excecao_relativa_e_ignorada(tmp_path):
+    """A excecao pode ser dada relativa ao repositorio."""
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "a.txt").write_text("gerado por claude\n", encoding="utf-8")
+    achados = varredura(tmp_path, excecoes=["docs/a.txt"])
+    assert achados == []
+
+
 def test_mensagem_de_commit_com_marcador_e_acusada(tmp_path):
     subprocess.run(["git", "init", "-q", str(tmp_path)], check=True, env=AMBIENTE)
     _git(tmp_path, "config", "user.name", "Pessoa")
@@ -58,3 +66,18 @@ def test_sigla_solta_e_acusada_mas_dentro_de_identificador_nao(tmp_path):
     (tmp_path / "a.txt").unlink()
     (tmp_path / "b.txt").write_text("variavel ai = 1\ncampo ia_um\n", encoding="utf-8")
     assert varredura(tmp_path) == []
+
+
+def test_pasta_que_nao_e_repositorio_avisa_em_vez_de_dizer_que_esta_limpa(tmp_path):
+    """Sem repositorio git nao ha historico para varrer: dizer 'limpo' seria mentira."""
+    (tmp_path / "a.txt").write_text("x\n", encoding="utf-8")
+    from scripts.varrer import main
+    assert main([str(tmp_path), "--historico"]) == 2
+
+
+def test_palavra_comum_em_codigo_legitimo_nao_e_acusada(tmp_path):
+    """'skill' e palavra corrente em codigo; nao pode acusar toda vez."""
+    (tmp_path / "a.java").write_text("public class SkillService {}\n", encoding="utf-8")
+    (tmp_path / "b.txt").write_text("o ledger de entrada\n", encoding="utf-8")
+    achados = varredura(tmp_path)
+    assert achados == [], achados

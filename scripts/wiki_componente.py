@@ -49,29 +49,70 @@ def _propriedades(pasta: Path) -> tuple[str, str, list]:
         if not arq.exists():
             continue
         texto = arq.read_text(encoding="utf-8")
-        contexto, porta, props = "", "", []
-        for linha in texto.splitlines():
-            linha = linha.strip()
-            if not linha or linha.startswith("#") or "=" not in linha:
-                continue
-            chave, _, valor = linha.partition("=")
-            chave = chave.strip()
-            valor = valor.strip()
-            if chave.endswith("context-path"):
-                contexto = valor
-            elif chave == "server.port":
-                porta = valor
-            elif chave.startswith("server."):
-                continue
-            else:
-                segredo = bool(re.search(r"(?i)secret|password|senha|token|key", chave))
-                variavel = re.search(r"\$\{([A-Z_]+)", valor)
-                props.append((chave, valor,
-                              "sim" if segredo else "não",
-                              f"definir a variável de ambiente {variavel.group(1)}"
-                              if variavel else ""))
+        if nome.endswith(".properties"):
+            contexto, porta, props = _propriedades_properties(texto)
+        else:
+            contexto, porta, props = _propriedades_yaml(texto)
         return contexto, porta, props
     return "", "", []
+
+
+def _propriedades_properties(texto: str) -> tuple[str, str, list]:
+    """Le o formato chave=valor, com a hierarquia do server no comeco."""
+    contexto, porta, props = "", "", []
+    for linha in texto.splitlines():
+        linha = linha.strip()
+        if not linha or linha.startswith("#") or "=" not in linha:
+            continue
+        chave, _, valor = linha.partition("=")
+        chave, valor = chave.strip(), valor.strip()
+        if chave.endswith("context-path"):
+            contexto = valor
+        elif chave == "server.port":
+            porta = valor
+        elif chave.startswith("server."):
+            continue
+        else:
+            props.append(_propriedade(chave, valor))
+    return contexto, porta, props
+
+
+def _propriedades_yaml(texto: str) -> tuple[str, str, list]:
+    """Le o YAML hierarquico, juntando o caminho com ponto: server.servlet.context-path."""
+    contexto, porta, props = "", "", []
+    pilha = []
+    for linha in texto.splitlines():
+        if not linha.strip() or linha.strip().startswith("#"):
+            continue
+        recuo = len(linha) - len(linha.lstrip())
+        conteudo = linha.strip()
+        if ":" not in conteudo:
+            continue
+        chave, _, valor = conteudo.partition(":")
+        chave, valor = chave.strip(), valor.strip()
+        while pilha and pilha[-1][0] >= recuo:
+            pilha.pop()
+        caminho = ".".join([p[1] for p in pilha] + [chave])
+        if not valor:
+            pilha.append((recuo, chave))
+            continue
+        if caminho.endswith("context-path"):
+            contexto = valor
+        elif caminho == "server.port":
+            porta = valor
+        elif caminho.startswith("server."):
+            continue
+        else:
+            props.append(_propriedade(caminho, valor))
+    return contexto, porta, props
+
+
+def _propriedade(chave: str, valor: str) -> tuple:
+    """Propriedade com a marca de quem precisa ser definida por ambiente."""
+    segredo = bool(re.search(r"(?i)secret|password|senha|token|key", chave))
+    variavel = re.search(r"\$\{([A-Z_]+)", valor)
+    obs = f"definir a variável de ambiente {variavel.group(1)}" if variavel else ""
+    return (chave, valor, "sim" if segredo else "não", obs)
 
 
 def _segredos(texto: str) -> list:
@@ -89,46 +130,83 @@ def _segredos(texto: str) -> list:
     return segredos
 
 
-METODOS = ("GetMapping", "PostMapping", "PutMapping", "DeleteMapping", "PatchMapping")
+METODOS = {"Get": "GET", "Post": "POST", "Put": "PUT", "Delete": "DELETE", "Patch": "PATCH"}
+ANOTACAO = re.compile(r"@(Get|Post|Put|Delete|Patch)Mapping|@RequestMapping")
+CAMINHO = re.compile(r"\"([^\"]*)\"")
+METODO_EXPLICITO = re.compile(r"RequestMethod\.(GET|POST|PUT|DELETE|PATCH)")
+
+
+def _caminho_de(texto: str, pos: int) -> str:
+    """O primeiro caminho depois da anotacao, na posicao dada."""
+    trecho = texto[pos: pos + 200]
+    achou = CAMINHO.search(trecho)
+    return achou.group(1) if achou else ""
 
 
 def _endpoints(pasta: Path) -> list:
-    """Endpoints dos controllers, com o metodo e o caminho."""
+    """Endpoints dos controllers, com o metodo e o caminho.
+
+    O caminho de classe (@RequestMapping na classe) entra como prefixo do caminho de metodo.
+    """
     achados = []
     for arq in sorted((pasta / "src" / "main" / "java").rglob("*.java")):
         texto = arq.read_text(encoding="utf-8")
-        for m in re.finditer(r"@RequestMapping\(\s*(?:value\s*=\s*)?\"([^\"]*)\"[^)]*\)\s*"
-                             r"(?:public\s+)?[\w<>\[\],\s]*?\s+(\w+)\s*\(", texto):
-            base = m.group(1)
-            metodo = "POST"
-            janela = texto[m.end(): m.end() + 300]
-            for nome in METODOS:
-                if f"@{nome}" in janela:
-                    metodo = nome.replace("Mapping", "").upper()
-                    break
+        anotacoes = list(ANOTACAO.finditer(texto))
+        # a anotacao de classe e a primeira, quando ela vem antes de qualquer metodo
+        base = ""
+        if anotacoes and anotacoes[0].group(0) == "@RequestMapping":
+            primeira = anotacoes[0]
+            trecho = texto[primeira.end(): primeira.end() + 200]
+            if METODO_EXPLICITO.search(trecho):
+                # e um metodo com metodo explicito, nao um prefixo de classe
+                pass
             else:
-                if "RequestMethod.GET" in texto[max(0, m.start() - 200):m.start()]:
-                    metodo = "GET"
-            achados.append((metodo, base, f"chamada {m.group(2)}"))
+                base = _caminho_de(texto, primeira.end())
+                anotacoes = anotacoes[1:]
+        for m in anotacoes:
+            anotacao, pos = m.group(0), m.end()
+            if anotacao == "@RequestMapping":
+                trecho = texto[pos: pos + 200]
+                explicito = METODO_EXPLICITO.search(trecho)
+                metodo = explicito.group(1) if explicito else "POST"
+                rota = _caminho_de(texto, pos)
+            else:
+                metodo = METODOS[anotacao[1:-len("Mapping")]]
+                rota = _caminho_de(texto, pos)
+            caminho = (base.rstrip("/") + "/" + rota.lstrip("/")) if rota else (base or "/")
+            achados.append((metodo, caminho, "recurso do componente"))
     return achados[:20]
 
 
 def _versao_e_artefato(pasta: Path, c: dict) -> tuple[str, str, str]:
+    """Versao e nome do artefato, do pom ou do package.json.
+
+    O bloco <parent> traz a versao do pai, que nao e a do componente: ele e ignorado.
+    """
     if c["tipo"] == "npm-pkg":
         pkg = json.loads((pasta / "package.json").read_text(encoding="utf-8"))
         return pkg.get("version", c["versao"]), c["artefato"], f"{c['artefato'].split('/')[-1]}.tgz"
     pom = (pasta / "pom.xml").read_text(encoding="utf-8")
-    m = re.search(r"<artifactId>([^<]+)</artifactId>\s*(?:<packaging>[^<]+</packaging>\s*)?<version>([^<]+)</version>", pom)
+    m_parent = re.search(r"<parent>.*?</parent>", pom, flags=re.S)
+    alvo = re.compile(r"(<artifactId>[^<]+</artifactId>\s*(?:<packaging>[^<]+</packaging>\s*)?<version>)([^<]+)(</version>)")
+    m = alvo.search(pom)
+    if m_parent and m and m_parent.start() < m.start() < m_parent.end():
+        m = alvo.search(pom, m_parent.end())
     if not m:
         return c["versao"], c["artefato"], c["artefato"].split(":")[-1] + ".jar"
-    nome, versao = m.group(1), m.group(2)
+    versao = m.group(2)
+    # o nome do artefato vem do <artifactId> do projeto, nao do texto inteiro do trecho
+    nome = re.search(r"<artifactId>([^<]+)</artifactId>", m.group(1))
+    nome = nome.group(1) if nome else c["artefato"].split(":")[-1]
     final = re.search(r"<finalName>([^<]+)</finalName>", pom)
-    arquivo = f"{final.group(1) if final else nome}.war" if "<packaging>war</packaging>" in pom else f"{nome}.jar"
+    empacotado = "war" if "<packaging>war</packaging>" in pom else "jar"
+    arquivo = f"{final.group(1) if final else nome}.{empacotado}"
     return versao, c["artefato"], arquivo
 
 
-def extrair_dados(pasta_repo: Path, c: dict) -> dict:
+def extrair_dados(pasta_repo: Path, c: dict, m: dict = None) -> dict:
     """Le do codigo o que a Wiki precisa dizer."""
+    m = m or {}
     contexto, porta, props = _propriedades(pasta_repo)
     versao, artefato, arquivo = _versao_e_artefato(pasta_repo, c)
     recursos = ""
@@ -144,9 +222,11 @@ def extrair_dados(pasta_repo: Path, c: dict) -> dict:
         "segredos": _segredos(recursos),
         "endpoints": _endpoints(pasta_repo),
         "testes": _contar_testes(pasta_repo),
-        "dependencias": [f"{d['artefato'].split(':')[-1]} {d['versao']}"
-                         for d in [] ] or [f"{x['repo']} {x['versao']}" for x in [c]],
-        "ambiente": "Tomcat 11",
+        "dependencias": [],
+        "ambiente": m.get("ambiente", {}).get("servidor", "Tomcat"),
+        "java": m.get("ambiente", {}).get("java", "JDK 25"),
+        "build": m.get("ambiente", {}).get("build", "Maven 3.9"),
+        "link_arquitetura": m.get("wiki", {}).get("link_arquitetura", ""),
     }
 
 
@@ -184,10 +264,13 @@ def criar_wiki_codigo(org: str, projeto: str, repo: str, branch: str) -> str:
         return ""
 
 
-def publicar_projeto(raiz_wiki: str, repo: str, texto: str, token: str, wiki: str = "Digital-Solution-MFG-Run") -> str:
+def publicar_projeto(raiz_wiki: str, repo: str, texto: str, token: str, m: dict) -> str:
     """Publica a copia na Wiki do projeto, com o aviso de fonte."""
     caminho = f"{raiz_wiki}/Componentes/{repo}"
-    url = (f"https://dev.azure.com/yamahaind/Digital%20Solution%20MFG%20Run/_apis/wiki/wikis/{wiki}/pages"
+    org = m.get("org", "")
+    projeto = urllib.parse.quote(m.get("projeto", ""))
+    wiki = m.get("wiki", {}).get("identificador", "")
+    url = (f"https://dev.azure.com/{org}/{projeto}/_apis/wiki/wikis/{wiki}/pages"
            f"?path={urllib.parse.quote(caminho)}&api-version=7.1")
     st, etag, _ = _api("GET", url, token=token)
     st, _, r = _api("PUT", url, {"content": texto}, token=token, etag=etag if st == 200 else None)
@@ -218,7 +301,9 @@ def main(argv=None) -> int:
         return 2
 
     clones = Path(args.repositorios)
-    raiz_wiki = m.get("wiki", {}).get("raiz", "/Java/ERP Consulta")
+    wiki = m.get("wiki", {})
+    raiz_wiki = wiki.get("raiz", "")
+    link_arquitetura = wiki.get("link_arquitetura", "")
     token = None if args.dry_run else _token()
 
     for c in m["componentes"]:
@@ -226,7 +311,7 @@ def main(argv=None) -> int:
         if not pasta.exists():
             print(f"  {c['repo']}: clone ausente em {pasta}, pulado")
             continue
-        dados = extrair_dados(pasta, c)
+        dados = extrair_dados(pasta, c, m)
         dados["dependencias"] = [f"{d['repo']} {d['versao']}" for d in m["componentes"]
                                 if d["repo"] in (c.get("dependeDe") or [])]
         secoes = gerar_secoes(c, dados)
@@ -244,7 +329,7 @@ def main(argv=None) -> int:
         commit = _commit(pasta)
         aviso = AVISO.format(repo=c["repo"], branch=branch, commit=commit)
         copia = aviso + "\n".join(secoes[nome] for nome in ORDEM) + "\n"
-        pagina = publicar_projeto(raiz_wiki, c["repo"], copia, token)
+        pagina = publicar_projeto(raiz_wiki, c["repo"], copia, token, m)
         print(f"  {c['repo']}: oito secoes escritas e copia publicada (pagina {pagina})")
 
     return 0

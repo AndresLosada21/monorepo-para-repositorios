@@ -29,8 +29,10 @@ def _tabela(cabecalho: str, linhas: list) -> str:
 
 
 def _visao(c: dict, d: dict) -> str:
-    tipo = {"maven-lib": "biblioteca Java (jar)", "maven-war": "aplicação web (war) para Tomcat 11",
-            "maven-jar": "aplicação Spring Boot executável (jar)", "npm-pkg": "pacote npm"}[d["tipo"]]
+    tipo = {"maven-lib": "biblioteca Java (jar)",
+            "maven-war": f"aplicação web (war) para {d.get('ambiente', 'Tomcat')}",
+            "maven-jar": "aplicação Spring Boot executável (jar)",
+            "npm-pkg": "pacote npm"}[d["tipo"]]
     linhas = [
         ["Artefato", f"`{d['artefato']}` versão `{d['versao']}`"],
         ["Tipo", tipo],
@@ -44,7 +46,7 @@ def _visao(c: dict, d: dict) -> str:
 
 {_tabela("", linhas)}
 A visão do conjunto, a ordem de deploy e o que o time precisa provisionar estão na
-[Arquitetura e Deploy](https://dev.azure.com/yamahaind/Digital%20Solution%20MFG%20Run/_wiki/wikis/Digital-Solution-MFG-Run?pagePath=/java/ERP%20Consulta/Arquitetura-e-Deploy).
+[Arquitetura e Deploy]({d.get('link_arquitetura', '')}).
 
 ## Nesta Wiki
 
@@ -97,7 +99,7 @@ ou no pipeline, nunca no repositório.
 
 ## Pré-requisitos
 
-- JDK 25 e Maven 3.9 ou mais novo.
+- {d.get('java', 'JDK 25')} e {d.get('build', 'Maven 3.9')} ou mais novo.
 - Leitura no feed de pacotes do time, para as bibliotecas internas.
 
 ## Comandos
@@ -164,8 +166,8 @@ def _deploy(c: dict, d: dict) -> str:
     if d["tipo"] == "npm-pkg":
         return f"""# {TITULOS['Deploy']}
 
-Pacote de tela: não é implantado sozinho. Entra no bundle do ERP Consulta e do Searchit Admin
-no momento do build deles.
+Pacote de tela: não é implantado sozinho. Entra no bundle das aplicações que o consomem,
+no momento do build delas.
 
 Publique a versão nova no feed **antes** de gerar os pacotes que a consomem.
 """
@@ -174,7 +176,7 @@ Publique a versão nova no feed **antes** de gerar os pacotes que a consomem.
         partes += [
             "## Onde roda",
             "",
-            f"- **{d.get('ambiente', 'Tomcat 11')}** com **JDK 25**.",
+            f"- **{d.get('ambiente', 'Tomcat')}** com **{d.get('java', 'JDK 25')}**.",
             f"- Contexto `{d['contexto']}`: o arquivo `target/{d['arquivo']}` vai para `webapps/` com o nome "
             f"**`{d['contexto'].strip('/')}.war`**. O nome do arquivo define o contexto no Tomcat.",
             f"- Porta do servidor: `{d.get('porta', '')}`.",
@@ -184,7 +186,7 @@ Publique a versão nova no feed **antes** de gerar os pacotes que a consomem.
         partes += [
             "## Onde roda",
             "",
-            f"- Processo próprio com **JDK 25**: `java -jar {d['arquivo']}`.",
+            f"- Processo próprio com **{d.get('java', 'JDK 25')}**: `java -jar {d['arquivo']}`.",
             f"- Porta `{d.get('porta', '')}`, contexto `{d.get('contexto', '')}`.",
             "",
         ]
@@ -192,7 +194,7 @@ Publique a versão nova no feed **antes** de gerar os pacotes que a consomem.
     if d.get("dependencias"):
         partes.append(f"- As dependências já publicadas no feed: {', '.join(d['dependencias'])}.")
     partes.append("- Os segredos da página Configuração definidos no ambiente.")
-    partes.append("- A ordem entre componentes está na [Arquitetura e Deploy](https://dev.azure.com/yamahaind/Digital%20Solution%20MFG%20Run/_wiki/wikis/Digital-Solution-MFG-Run?pagePath=/java/ERP%20Consulta/Arquitetura-e-Deploy).")
+    partes.append("- A ordem entre componentes está na [Arquitetura e Deploy](" + d.get("link_arquitetura", "") + ").")
     partes += ["", "## Conferência depois de implantar", ""]
     if d.get("endpoints"):
         partes.append(_tabela("Método | Endereço | O que deve responder", d["endpoints"]))
@@ -216,8 +218,8 @@ def _operacao(c: dict, d: dict) -> str:
 
 ## Logs
 
-{log}. O nível do pacote `br.com.yamaha` está em `DEBUG`; em produção, pode ser reduzido sem
-recompilar com `-Dlogging.level.br.com.yamaha=INFO`.
+{log}. O nível de log do pacote fica em `DEBUG`; em produção, pode ser reduzido sem recompilar,
+pela propriedade de log do próprio pacote.
 
 ## Erros conhecidos
 
@@ -248,6 +250,7 @@ Tudo sai de `{d['artefato']}`:
 | `THEMES`, `useErpTheme`, `ThemePicker` | temas |
 
 Estilos: `@use '@erp/shared/styles/shell';` no SCSS da aplicação, depois do `@carbon/react`.
+A base comum vem do pacote `{d.get('artefato', '')}` do feed do time.
 """
     if d.get("endpoints"):
         linhas = "\n".join("| {} | `{}` | {} |".format(m, rota, o_que)
