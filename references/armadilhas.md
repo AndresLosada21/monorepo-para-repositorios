@@ -9,10 +9,15 @@ operador encontra e o que fazer.
 |---|---|---|
 | Os nomes de arquivo ganha um caractere invisível no fim e a árvore não abre | `core.autocrlf` ligado converte a quebra de linha e o caractere entra no nome | `core.autocrlf=false` em **toda** operação de histórico, e um `git config` só para a máquina que faz a reescrita |
 | O histórico não vem do monorepo | o remoto do `git fetch` é o repositório de destino, que está vazio | o monorepo entra como remoto separado (`monorepo`) e o destino como `origin`; o `filter-repo` roda sobre `refs/remotes/monorepo/<branch>` |
+| A branch é criada, mas a pasta fica vazia | criar o ref não popula a árvore de trabalho | `git checkout` da branch nova depois de criá-la |
+| A versão e o feed não chegam ao commit | faltava o `git add` e o `commit` | o script faz os dois, e a remoção dos arquivos de apoio é um commit à parte |
+| A separação termina verde, sem separar nada | o código de retorno dos comandos era ignorado | todo comando é conferido, e a falha sai com código 1 |
+| A branch não sobe no destino | o `push` só existia no caminho de `--dry-run` | o fluxo real faz o push, e `--sem-publicar` dispensa |
 | `Cannot read mailmap` | o `filter-repo` resolve o caminho relativo ao repositório, e os arquivos de apoio estavam no diretório pai | `mailmap` e `replace-text.txt` vão **dentro** do repositório |
-| O script diz que separou, e o repositório está vazio | o código de retorno dos comandos git era ignorado | todo comando é conferido; a falha sai na hora, com o trecho do erro |
-| A tag antiga continua apontando para o commit antigo | `git filter-branch` não reescreve as tags sem pedir | sempre com `--tag-name-filter cat` |
-| A substituição de texto não pega a frase inteira | `git filter-repo` não aceita regex multilinha no `--replace-text` | segunda passada com `--tree-filter` e um script Python |
+| Os arquivos de apoio viram rastro | o `mailmap` tem a identidade de ferramenta e o `replace-text` tem as expressões que a fase 6 procura | eles são removidos do índice depois da reescrita, em commit à parte |
+| A tag antiga continua apontando para o commit antigo | o `filter-branch` não reescreve as tags sem pedir | sempre com `--tag-name-filter cat` (o `filter-repo`, que a skill usa, reescreve as tags por conta própria) |
+| A substituição de texto não pega a frase inteira | o `git filter-repo` não aceita regex multilinha no `--replace-text`, e o `regex:` dele não ancora em `^` e `$` | usar `glob:` no arquivo de regras, que casa linha a linha |
+| A frase de instrução continua no arquivo | o `replace-text` troca o **conteúdo**; o nome da pasta é outro assunto | para renomear a pasta, `--path-rename`, que já vem na separação |
 | A árvore fica com o nome corrompido ao gravar | `git mktree` alimentado pelo PowerShell acrescenta `\r` | `git read-tree` seguido de `git update-index --cacheinfo`, que grava os bytes do arquivo |
 | O `--path` não filtra a pasta do componente | o glob `pasta/**` não casa; o que funciona é o diretório | `--path <pasta>/` junto de `--path-rename <pasta>/:` |
 | Depois do `filter-repo` a branch sumiu | ele reescreve a branch e a deixa só como `refs/remotes/monorepo/<branch>` | criar a branch nova a partir de lá |

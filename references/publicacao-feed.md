@@ -6,11 +6,16 @@ os outros sistemas consomem; o repositório é onde o código vive.
 ## A ordem vem do grafo
 
 A ordem de publicação sai de `dependeDe` no manifesto, não de uma lista escrita à mão. O
-`scripts/publicar_feed.py` calcula a ordem e imprime:
+`scripts/publicar_feed.py` calcula a ordem e imprime. Num caso real com nove componentes, a ordem
+foi:
 
 ```text
-ordem de publicacao: erp-frontend-shared -> ITSecurityService -> SearchitService -> SearchitGateway -> ERPConsultaWeb
+ordem de publicacao: ITSecurityService -> SearchitService -> erp-frontend-shared -> ERPConsultaWeb -> SearchitGateway
 ```
+
+Duas ordens topologicamente válidas são possíveis quando não há dependência entre publicantes: o
+script escolhe a que primeiro libera o maior número de componentes. O que **não** pode acontecer é
+publicar um componente antes de uma biblioteca que ele consome.
 
 A ordem importa porque o serviço que consome uma biblioteca precisa que ela já esteja no feed:
 o build dele baixa por versão, e se a versão não estiver lá, o build quebra.

@@ -23,6 +23,20 @@ documentação de build, configuração e deploy de cada um, e com as versões p
   `engenharia-de-requisitos-yamaha`.
 - Para mexer em tela React + Carbon: use `yamaha-carbon-ui`.
 
+## O que precisa estar na máquina
+
+| Ferramenta | Para que fase | Como conferir |
+|---|---|---|
+| Python 3.11 ou mais novo | todas | `python --version` |
+| `git-filter-repo` | 2 e 6 | `git filter-repo --version` |
+| Git 2.30 ou mais novo | 2 e 6 | `git --version` |
+| JDK 25 e Maven 3.9 | 3 | `java -version` e `mvn --version` |
+| Node 24 e npm 11 | 3, para as telas | `node --version` e `npm --version` |
+| Azure CLI com `az login` | 4 e 5 | `az account show` |
+
+Sem o `git-filter-repo`, a fase 2 falha com `git: 'filter-repo' is not a git command`. A instalação
+é `pip install git-filter-repo`.
+
 ## O manifesto
 
 Tudo vem de um manifesto JSON que descreve o que fazer. Nenhum script carrega o caso de um
@@ -57,12 +71,13 @@ python scripts/varrer.py <repo> --historico
 ### 2. Separação (escreve)
 
 ```text
-python scripts/separar.py --manifesto m.json --destino <pasta> [--apenas <repo>] [--dry-run] [--sim]
+python scripts/separar.py --manifesto m.json --destino <pasta> [--apenas <repo>] [--dry-run] [--sim] [--sem-publicar]
 ```
 
 Para cada componente: reescreve o histórico com `git filter-repo` (a pasta vira a raiz, o autor
 passa a ser o `responsavel` do manifesto, o texto é limpo), declara a versão e o feed no
-`pom.xml` ou `package.json` e monta a branch `reorganizacao/repositorio-independente`.
+`pom.xml` ou `package.json`, faz o commit e sobe a branch `reorganizacao/repositorio-independente`
+no repositório de destino.
 
 O histórico vem do monorepo; o repositório novo é só o destino. O `filter-repo` roda sobre
 `refs/remotes/monorepo/<branch>` e os arquivos de apoio (`mailmap` e `replace-text.txt`) vão

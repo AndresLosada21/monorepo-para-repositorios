@@ -1,10 +1,12 @@
 """Leitura e validacao do manifesto que descreve a divisao do monorepo."""
 import json
+import re
 from pathlib import Path
 
 TIPOS = {"maven-lib", "maven-war", "maven-jar", "npm-pkg"}
 CAMPOS = ("repo", "caminho", "artefato", "tipo", "versao", "publica", "dependeDe", "descricao")
-CAMPOS_DE_TOPO = ("projeto", "org", "feed", "monorepo", "responsavel")
+CAMPOS_DE_TOPO = ("projeto", "org", "feed", "monorepo", "responsavel", "componentes")
+VERSAO = r"^[0-9]+(\.[0-9]+)*(-[A-Za-z0-9.]+)?$"
 
 
 def carregar(caminho: str) -> dict:
@@ -20,6 +22,9 @@ def validar(m: dict) -> list[str]:
             erros.append(f"manifesto: falta o campo '{campo}'")
 
     componentes = m.get("componentes") or []
+    if not componentes:
+        erros.append("manifesto: a lista de componentes esta vazia")
+
     nomes = {c.get("repo") for c in componentes}
     caminhos = {}
     for c in componentes:
@@ -29,6 +34,10 @@ def validar(m: dict) -> list[str]:
                 erros.append(f"{repo}: falta o campo '{campo}'")
         if c.get("tipo") not in TIPOS:
             erros.append(f"{repo}: tipo desconhecido '{c.get('tipo')}'")
+        if not re.match(VERSAO, str(c.get("versao", ""))):
+            erros.append(f"{repo}: versao invalida '{c.get('versao')}'")
+        if not isinstance(c.get("publica"), bool):
+            erros.append(f"{repo}: 'publica' tem de ser verdadeiro ou falso")
         for dep in c.get("dependeDe") or []:
             if dep not in nomes:
                 erros.append(f"{repo}: depende de '{dep}', que nao esta no manifesto")

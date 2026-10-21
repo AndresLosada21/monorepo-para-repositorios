@@ -70,7 +70,7 @@ O `SKILL.md` é o ponto de entrada: ele diz quando usar a skill, em que ordem ro
 
 ## A skill não varre a si mesma
 
-O `varrer.py` procura nomes de ferramenta e o vocabulário do trabalho com agente. A skill contém essas expressões por natureza, então ela **não entra no próprio escopo** da varredura. Isso é comportamento esperado e documentado, não defeito: ao rodar `varrer.py` na raiz da skill, ela vai se acusar (178 achados na versão em que este texto foi escrito). O `references/armadilhas.md` registra o motivo.
+O `varrer.py` procura nomes de ferramenta e o vocabulário do trabalho com agente. A skill contém essas expressões por natureza, então ela **não entra no próprio escopo** da varredura. Isso é comportamento esperado e documentado, não defeito: ao rodar `varrer.py` na raiz da skill, ela vai se acusar. O número de achados muda conforme a skill cresce, e o `references/armadilhas.md` registra o motivo.
 
 ## Testes
 

@@ -76,3 +76,21 @@ def test_responsavel_e_obrigatorio():
     m = carregar(str(EXEMPLO))
     del m["responsavel"]
     assert any("responsavel" in e.lower() for e in validar(m))
+
+
+def test_componentes_vazio_e_acusado():
+    m = carregar(str(EXEMPLO))
+    m["componentes"] = []
+    assert validar(m) != []
+
+
+def test_versao_invalida_e_acusada():
+    m = carregar(str(EXEMPLO))
+    m["componentes"][0]["versao"] = "nao-e-versao"
+    assert any("versao" in e.lower() for e in validar(m))
+
+
+def test_publica_tem_de_ser_booleano():
+    m = carregar(str(EXEMPLO))
+    m["componentes"][0]["publica"] = "talvez"
+    assert any("publica" in e.lower() for e in validar(m))
