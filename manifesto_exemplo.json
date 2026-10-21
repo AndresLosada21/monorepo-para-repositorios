@@ -1,0 +1,105 @@
+{
+  "projeto": "Digital Solution MFG Run",
+  "org": "yamahaind",
+  "feed": "mfg-java",
+  "monorepo": {
+    "url": "https://dev.azure.com/yamahaind/Digital Solution MFG Run/_git/ERPConsulta",
+    "branch": "main"
+  },
+  "wiki": {
+    "raiz": "/Java/ERP Consulta",
+    "paginaArquitetura": "Arquitetura e Deploy"
+  },
+  "componentes": [
+    {
+      "repo": "neway-lib",
+      "caminho": "libs/neway-lib",
+      "artefato": "br.com.neway:neway-lib",
+      "tipo": "maven-lib",
+      "versao": "1.0.0",
+      "publica": false,
+      "dependeDe": [],
+      "descricao": "Biblioteca base dos sistemas Java da casa: repositorio generico com paginacao, envelope de resposta e utilitarios."
+    },
+    {
+      "repo": "Middleware",
+      "caminho": "libs/middleware",
+      "artefato": "br.com.yamaha:middleware",
+      "tipo": "maven-lib",
+      "versao": "1.0.0",
+      "publica": false,
+      "dependeDe": [],
+      "descricao": "Clientes dos webservices do SGA (acessos, perfis, dominio) e do SGC (conexoes de banco)."
+    },
+    {
+      "repo": "FinancialDcreModel",
+      "caminho": "libs/financialdcre-model",
+      "artefato": "br.com.yamaha:financialdcre-model",
+      "tipo": "maven-lib",
+      "versao": "1.0.0",
+      "publica": false,
+      "dependeDe": ["neway-lib"],
+      "descricao": "Espelho das entidades JPA do modelo financialdcre, cujo dono e o FINSYS."
+    },
+    {
+      "repo": "erp-frontend-shared",
+      "caminho": "frontend/packages/shared",
+      "artefato": "@erp/shared",
+      "tipo": "npm-pkg",
+      "versao": "1.0.0",
+      "publica": true,
+      "dependeDe": [],
+      "descricao": "Base comum das telas React + Carbon: moldura, entrada, sessao, cliente HTTP, grade e exportacao CSV."
+    },
+    {
+      "repo": "ITSecurityService",
+      "caminho": "apps/it-security-service",
+      "artefato": "br.com.yamaha:itSecurityService",
+      "tipo": "maven-war",
+      "versao": "2.0.0",
+      "publica": true,
+      "dependeDe": ["neway-lib", "Middleware", "FinancialDcreModel"],
+      "descricao": "Servico de entrada: autentica no SGA, devolve perfis e menu e emite a credencial de acesso."
+    },
+    {
+      "repo": "SearchitService",
+      "caminho": "apps/searchit-service",
+      "artefato": "br.com.yamaha:searchitService",
+      "tipo": "maven-war",
+      "versao": "2.0.0",
+      "publica": true,
+      "dependeDe": ["neway-lib", "Middleware"],
+      "descricao": "Catalogo de consultas do Searchit: guarda as consultas, entrega as regras de apresentacao e executa."
+    },
+    {
+      "repo": "SearchitExecutorService",
+      "caminho": "apps/searchit-executor-service",
+      "artefato": "br.com.yamaha:searchitExecutorService",
+      "tipo": "maven-war",
+      "versao": "1.0.0",
+      "publica": false,
+      "dependeDe": ["neway-lib", "Middleware"],
+      "descricao": "Executor remoto de SQL, para as consultas que rodam em outra rede."
+    },
+    {
+      "repo": "SearchitGateway",
+      "caminho": "apps/searchit-gateway",
+      "artefato": "br.com.yamaha:searchitGateway",
+      "tipo": "maven-jar",
+      "versao": "2.0.1",
+      "publica": true,
+      "dependeDe": ["neway-lib", "erp-frontend-shared"],
+      "descricao": "Searchit Admin: tela de manutencao do catalogo de consultas, para o time de TI."
+    },
+    {
+      "repo": "ERPConsultaWeb",
+      "caminho": "apps/erp-gateway",
+      "artefato": "br.com.yamaha:erpGateway",
+      "tipo": "maven-war",
+      "versao": "2.0.1",
+      "publica": true,
+      "dependeDe": ["neway-lib", "erp-frontend-shared"],
+      "descricao": "ERP Consulta: tela onde as areas consultam os dados do ERP a partir do catalogo do Searchit."
+    }
+  ]
+}

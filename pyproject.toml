@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "monorepo-para-repositorios"
+version = "0.1.0"
+description = "Skill que transforma um monorepo em varios repositorios prontos para o DevOps"
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.setuptools]
+packages = ["scripts"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
